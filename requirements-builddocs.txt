@@ -1,0 +1,4 @@
+-e git+git@github.com:dmdm/backinajiffy-pygments_gruvbox.git@aea6c44bda805f6b8ef77222a28b11b3d4c1df6d#egg=Backinajiffy_Pygments_Gruvbox
+furo @ file:///home/dm/myprojects/sphinx-themes/furo
+sphinx
+sphinx-autobuild
