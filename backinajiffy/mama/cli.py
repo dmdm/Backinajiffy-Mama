@@ -14,11 +14,13 @@ import os
 import pkgutil
 
 from tabulate import tabulate
+
 try:
     import ujson as json
 except ImportError:
     import json
 import json as json_builtin
+
 try:
     from yaml import CDumper as YamlDumper
 except ImportError:
@@ -416,11 +418,13 @@ async def default_main(project_name: str,
     Default implementation of a 'main' function.
 
     :param project_name: Name of the project
-    :param project_logger_name: NAme of the logger of this project
+    :param project_logger_name: Name of the logger of this project
     :param argparser: Instance of an argument parser
     :param argv: List of command-line arguments, e.g. `sys.argv[1:]`
     :param debug_args: Whether to log the parsed command-line arguments for debugging
-    :param log_libs: Set log-level also for these libraries
+    :param log_libs: Set log-level also for these libraries (these are by default always affected: 'urllib3', 'aiossh',
+        'asyncio', 'aiohttp', 'mama', 'backinajiffy')
+    :param init_func: Function to perform custom initialisation
     """
     if argv is None:
         argv = sys.argv

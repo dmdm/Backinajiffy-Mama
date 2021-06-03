@@ -9,6 +9,8 @@ HOWTOs
 
    cliarguments
    errorhandling
+   initialisation
    logging
    outputformatting
    remotecmd
+   subcommands
