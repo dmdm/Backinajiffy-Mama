@@ -97,6 +97,8 @@ class BaseCmd:
             data = yaml.dump(data, Dumper=YamlDumper)
         elif self.output_format == 'ptxt':
             data = pformat(data)
+        elif self.output_format == 'tsv':
+            data = "\n".join(["\t".join([str(c) for c in row]) for row in data])
         await output(data, fn=self.output_file)
         if self.output_file:
             self.lgg.info(f"Output written to file '{self.output_file}'")
@@ -105,14 +107,18 @@ class BaseCmd:
         """
         Formats the result data.
 
-        If requested output format is neither "json", "yaml", nor "ptext", we will format the data here. By default,
+        If requested output format is neither "json", "yaml", "ptext", "tsv", we will format the data here. By default,
         we format sequences and mappings as an ASCII table.
 
         :param data: Raw result data
         :return: The formatted data as string
         """
-        if isinstance(data, collections.Sequence) and len(data) > 0 and isinstance(data[0], collections.Mapping):
-            s = tabulate(data, headers='keys')
+        if len(data) > 0 and isinstance(data, collections.Sequence):
+            if isinstance(data[0], collections.Mapping):
+                headers='keys'
+            else:
+                headers = ''
+            s = tabulate(data, headers=headers)
             s += "\n({} rows)".format(len(data))
             return s
         else:
@@ -127,7 +133,7 @@ class BaseCmd:
 
         :return:
         """
-        return self.output_format in ('json', 'yaml', 'ptxt')
+        return self.output_format in ('json', 'yaml', 'ptxt', 'tsv')
 
     async def run(self) -> int:
         """
@@ -260,7 +266,7 @@ def add_argument(p: ArgumentParser,
             action='store_true'
         )
     elif arg == 'output-format':
-        choices = ['txt', 'ptxt', 'json', 'yaml']
+        choices = ['txt', 'ptxt', 'json', 'yaml', 'tsv']
         default = default_value if default_value else choices[0]
         if more_choices:
             choices += more_choices
@@ -336,7 +342,7 @@ async def run_subcommand(lgg: logging.Logger, args: argparse.Namespace) -> int:
             return EXIT_CODE_FATAL
         else:
             lgg.debug(f"Running subcommand '{args.cmd}'")
-            cmd = args.cmd(args)
+            cmd = args.cmd(args, lgg=lgg)
             return await cmd.run()
     except Exception as exc:
         lgg.fatal("Unhandled exception: {}".format(get_error_msg_chain(exc)), exc_info=True)
@@ -435,7 +441,7 @@ async def default_main(project_name: str,
     if debug_args:
         lgg.debug(args)
     if init_func:
-        await init_func()
+        await init_func(args)
 
     start_time = time.time()
     lgg.info(f'Start {project_name}')
