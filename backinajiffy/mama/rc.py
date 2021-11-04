@@ -1,3 +1,4 @@
+import argparse
 from collections import ChainMap
 from pathlib import Path
 from typing import Optional, Any, Union, List, Dict
@@ -18,7 +19,7 @@ class Rc:
     _conf = ChainMap()
 
     @classmethod
-    def create(cls, project_name: str, defaults: Optional[Dict] = None, fn_rc: Optional[Path] = None):
+    def create(cls, project_name: str, defaults: Optional[Dict] = None, fn_rc: Optional[Path] = None) -> 'Rc':
 
         def _read_regular_files():
             ff = [
@@ -54,7 +55,7 @@ class Rc:
         secrets = _read_secrets_file()
         if secrets:
             cls._conf = cls._conf.new_child(flatten(secrets))
-        cls._conf = cls._conf.new_child()  # set CLI args and run-time values in this dict
+        return cls._instance
 
     @classmethod
     def get_instance(cls) -> 'Rc':
@@ -79,6 +80,9 @@ class Rc:
         conf = self.__class__._conf
         kk = [k for k in conf.keys() if k.startswith(path)]
         return {k[len(path + '.'):]: conf[k] for k in kk}
+
+    def add_args(self, args: argparse.Namespace):
+        self.__class__._conf = self.__class__._conf.new_child(vars(args))
 
 
     @property

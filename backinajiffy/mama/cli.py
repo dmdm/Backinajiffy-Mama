@@ -289,7 +289,8 @@ def add_argument(p: ArgumentParser,
         p.add_argument(
             '-c', '--conf',
             help='Read this config file (yaml or json)' + (more_help if more_help else ''),
-            default=default_value
+            default=default_value,
+            type=Path
         )
     else:
         raise ValueError(f"Unknown argument '{arg}'")
@@ -445,7 +446,7 @@ async def default_main(project_name: str,
 
     start_time = time.time()
     lgg.info(f'Start {project_name}')
-    Rc.create(project_name=project_name, fn_rc=Path(args.conf) if args.conf else None)
+    Rc.create(project_name=project_name, fn_rc=args.conf if args.conf else None).add_args(args)
 
     exit_code = await run_subcommand(lgg, args)
     taken = time.time() - start_time
