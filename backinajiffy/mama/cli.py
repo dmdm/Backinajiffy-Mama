@@ -320,7 +320,7 @@ def import_subcommands(p: ArgumentParser, module_with_commands):
     :param p: Instance of ArgumentParser
     :param module_with_commands: The imported module.
     """
-    sps = p.add_subparsers(dest='cmd', help='Commands')
+    sps = p.add_subparsers(dest='subcmd', help='Commands')
     for _, name, _ in pkgutil.iter_modules(module_with_commands.__path__):
         m = import_module(f'{module_with_commands.__name__}.{name}')
         m.add_subcommand(sps)
