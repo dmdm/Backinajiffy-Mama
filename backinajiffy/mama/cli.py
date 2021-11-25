@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import collections
+import collections.abc
 import sys
 import time
 from pathlib import Path
@@ -113,9 +114,9 @@ class BaseCmd:
         :param data: Raw result data
         :return: The formatted data as string
         """
-        if len(data) > 0 and isinstance(data, collections.Sequence):
-            if isinstance(data[0], collections.Mapping):
-                headers='keys'
+        if len(data) > 0 and isinstance(data, collections.abc.Sequence) and not isinstance(data, str):
+            if isinstance(data[0], collections.abc.Mapping):
+                headers = 'keys'
             else:
                 headers = ''
             s = tabulate(data, headers=headers)
