@@ -88,16 +88,63 @@ def resolve_cli_arguments(args: argparse.Namespace) -> List[Dict]:
     :param args: Namespace with arguments as created by ArgumentParser.parse()
     :return: List of dicts with one dict per (jump) host.
     """
+    return build_remote_arguments(
+        remotes=args.remotes,
+        sudo=True if args.sudo else False,
+        jump_hosts=args.jump_hosts,
+        strict_host_key_checking=args.strict_host_key_checking,
+        cmd_timeout=args.cmd_timeout,
+        login_timeout=args.login_timeout
+    )
+    # general_args = {
+    #     'jump_hosts':    parse_ssh_urls(args.jump_hosts) if args.jump_hosts else [],
+    #     'sudo':          True if args.sudo else False,
+    #     'cmd_timeout':   args.cmd_timeout,
+    #     'login_timeout': args.login_timeout,
+    # }
+    # if not args.strict_host_key_checking:
+    #     general_args['known_hosts'] = None
+    # rr = []
+    # for i, ar in enumerate(args.remotes):
+    #     r = {} if i == 0 else deepcopy(rr[i - 1])
+    #     if ar.startswith('ssh://'):
+    #         r['end_host'] = parse_ssh_urls([ar])[0]
+    #     else:
+    #         if i > 0:
+    #             r['end_host']['host'] = ar
+    #         else:
+    #             raise MamaError('1st remote must be complete URL')
+    #     r.update(general_args)
+    #     if r['sudo']:
+    #         r['sudo_pwd'] = r['end_host']['password']
+    #     rr.append(r)
+    # return rr
+
+
+def build_remote_arguments(remotes: List[str], sudo=False, jump_hosts: Optional[List[str]] = None,
+                           strict_host_key_checking=False, cmd_timeout=CMD_TIMEOUT, login_timeout=LOGIN_TIMEOUT
+                           ) -> List[Dict]:
+    """
+    Resolves arguments into a dict.
+
+    :param remotes: List of ssh-URLs to connect to (ssh://user:pwd@host)
+    :param sudo: Use sudo
+    :param jump_hosts: List of ssh-URLs to use as jump hosts
+    :param strict_host_key_checking:
+    :param cmd_timeout:
+    :param login_timeout:
+    :return: List of dicts with one dict per (jump) host.
+    """
     general_args = {
-        'jump_hosts':    parse_ssh_urls(args.jump_hosts) if args.jump_hosts else [],
-        'sudo':          True if args.sudo else False,
-        'cmd_timeout':   args.cmd_timeout,
-        'login_timeout': args.login_timeout,
+        'jump_hosts':    parse_ssh_urls(jump_hosts) if jump_hosts else [],
+        'sudo':          True if sudo else False,
+        'cmd_timeout':   cmd_timeout,
+        'login_timeout': login_timeout,
     }
-    if not args.strict_host_key_checking:
+    if not strict_host_key_checking:
         general_args['known_hosts'] = None
     rr = []
-    for i, ar in enumerate(args.remotes):
+    for i, ar in enumerate(remotes):
         r = {} if i == 0 else deepcopy(rr[i - 1])
         if ar.startswith('ssh://'):
             r['end_host'] = parse_ssh_urls([ar])[0]
@@ -253,17 +300,6 @@ async def run_cmd_logged(lgg: Logger, conn, cmd: str or List[str], sudo=None,
     :param kwargs: Passed through to :meth:`asyncssh.SSHClientConnection.run`
     :return: :class:`asyncssh.SSHCompletedProcess`
     """
-    # if isinstance(cmd, list):
-    #     cmd = ' '.join(cmd)
-    # if isinstance(sudo, str):
-    #     cmd = _wrap_sudo(cmd)
-    #     if 'encoding' in kwargs and kwargs['encoding'] is None:
-    #         inp = (sudo + "\n").encode('utf-8')
-    #     else:
-    #         inp = (sudo + "\n")
-    #     r = await asyncio.wait_for(conn.run(cmd, **kwargs, input=inp, check=False), timeout=timeout)
-    # else:
-    #     r = await asyncio.wait_for(conn.run(cmd, **kwargs, check=False), timeout=timeout)
     r = await run_cmd(conn=conn, cmd=cmd, sudo=sudo, check=False, timeout=timeout, **kwargs)
     if r.returncode != 0:
         lgg.error("Error executing remote command '{}': RETURN CODE={}; STDERR={}".format(
@@ -442,23 +478,6 @@ async def fetch_mongo_rs_status(conn, mongo_uri, sudo=None, timeout: Optional[in
     lgg.debug("Fetching Mongo rs status")
     cmd = ['mongo', mongo_uri, '--quiet', '--eval', '"rs.status()"']
     return await _run_mongo_command(lgg, conn, cmd, sudo, timeout)
-    # r = await run_cmd_logged(lgg,
-    #                          conn,
-    #                          cmd,
-    #                          sudo=sudo_pwd,
-    #                          encoding=None,
-    #                          timeout=timeout)
-    # if r.returncode != 0:
-    #     return None
-    # ss = [s for s in r.stdout.decode('utf-8').strip().replace("\t", '  ').split("\n")]
-    # i = -1
-    # for i in range(len(ss)):
-    #     if ss[i].startswith('{'):
-    #         break
-    # if i > -1:
-    #     ss = ss[i:]
-    # s = "\n".join(ss)
-    # return parse_mongo_json(s)
 
 
 async def fetch_mongo_rs_conf(conn, mongo_uri, sudo=None, timeout: Optional[int] = CMD_TIMEOUT) -> Dict:
@@ -475,23 +494,6 @@ async def fetch_mongo_rs_conf(conn, mongo_uri, sudo=None, timeout: Optional[int]
     lgg.debug("Fetching Mongo rs conf")
     cmd = ['mongo', mongo_uri, '--quiet', '--eval', '"rs.conf()"']
     return await _run_mongo_command(lgg, conn, cmd, sudo, timeout)
-    # r = await run_cmd_logged(lgg,
-    #                          conn,
-    #                          cmd,
-    #                          sudo=sudo,
-    #                          encoding=None,
-    #                          timeout=timeout)
-    # if r.returncode != 0:
-    #     return None
-    # ss = [s for s in r.stdout.decode('utf-8').strip().replace("\t", '  ').split("\n")]
-    # i = -1
-    # for i in range(len(ss)):
-    #     if ss[i].startswith('{'):
-    #         break
-    # if i > -1:
-    #     ss = ss[i:]
-    # s = "\n".join(ss)
-    # return parse_mongo_json(s)
 
 
 async def fetch_hostname(conn, sudo=None, timeout: Optional[int] = CMD_TIMEOUT) -> str:
@@ -500,8 +502,3 @@ async def fetch_hostname(conn, sudo=None, timeout: Optional[int] = CMD_TIMEOUT) 
     cmd = ['hostname']
     r = await run_cmd_logged(lgg, conn, cmd, sudo, timeout)
     return r.stdout.strip()
-
-
-# ##############################################################################################################
-# #####  TODO Move below methods to Frogspace9, they are BARCO specific
-# ##############################################################################################################
