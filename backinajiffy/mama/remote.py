@@ -88,16 +88,63 @@ def resolve_cli_arguments(args: argparse.Namespace) -> List[Dict]:
     :param args: Namespace with arguments as created by ArgumentParser.parse()
     :return: List of dicts with one dict per (jump) host.
     """
+    return build_remote_arguments(
+        remotes=args.remotes,
+        sudo=True if args.sudo else False,
+        jump_hosts=args.jump_hosts,
+        strict_host_key_checking=args.strict_host_key_checking,
+        cmd_timeout=args.cmd_timeout,
+        login_timeout=args.login_timeout
+    )
+    # general_args = {
+    #     'jump_hosts':    parse_ssh_urls(args.jump_hosts) if args.jump_hosts else [],
+    #     'sudo':          True if args.sudo else False,
+    #     'cmd_timeout':   args.cmd_timeout,
+    #     'login_timeout': args.login_timeout,
+    # }
+    # if not args.strict_host_key_checking:
+    #     general_args['known_hosts'] = None
+    # rr = []
+    # for i, ar in enumerate(args.remotes):
+    #     r = {} if i == 0 else deepcopy(rr[i - 1])
+    #     if ar.startswith('ssh://'):
+    #         r['end_host'] = parse_ssh_urls([ar])[0]
+    #     else:
+    #         if i > 0:
+    #             r['end_host']['host'] = ar
+    #         else:
+    #             raise MamaError('1st remote must be complete URL')
+    #     r.update(general_args)
+    #     if r['sudo']:
+    #         r['sudo_pwd'] = r['end_host']['password']
+    #     rr.append(r)
+    # return rr
+
+
+def build_remote_arguments(remotes: List[str], sudo=False, jump_hosts: Optional[List[str]] = None,
+                           strict_host_key_checking=False, cmd_timeout=CMD_TIMEOUT, login_timeout=LOGIN_TIMEOUT
+                           ) -> List[Dict]:
+    """
+    Resolves arguments into a dict.
+
+    :param remotes: List of ssh-URLs to connect to (ssh://user:pwd@host)
+    :param sudo: Use sudo
+    :param jump_hosts: List of ssh-URLs to use as jump hosts
+    :param strict_host_key_checking:
+    :param cmd_timeout:
+    :param login_timeout:
+    :return: List of dicts with one dict per (jump) host.
+    """
     general_args = {
-        'jump_hosts':    parse_ssh_urls(args.jump_hosts) if args.jump_hosts else [],
-        'sudo':          True if args.sudo else False,
-        'cmd_timeout':   args.cmd_timeout,
-        'login_timeout': args.login_timeout,
+        'jump_hosts':    parse_ssh_urls(jump_hosts) if jump_hosts else [],
+        'sudo':          True if sudo else False,
+        'cmd_timeout':   cmd_timeout,
+        'login_timeout': login_timeout,
     }
-    if not args.strict_host_key_checking:
+    if not strict_host_key_checking:
         general_args['known_hosts'] = None
     rr = []
-    for i, ar in enumerate(args.remotes):
+    for i, ar in enumerate(remotes):
         r = {} if i == 0 else deepcopy(rr[i - 1])
         if ar.startswith('ssh://'):
             r['end_host'] = parse_ssh_urls([ar])[0]
