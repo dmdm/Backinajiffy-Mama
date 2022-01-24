@@ -253,17 +253,6 @@ async def run_cmd_logged(lgg: Logger, conn, cmd: str or List[str], sudo=None,
     :param kwargs: Passed through to :meth:`asyncssh.SSHClientConnection.run`
     :return: :class:`asyncssh.SSHCompletedProcess`
     """
-    # if isinstance(cmd, list):
-    #     cmd = ' '.join(cmd)
-    # if isinstance(sudo, str):
-    #     cmd = _wrap_sudo(cmd)
-    #     if 'encoding' in kwargs and kwargs['encoding'] is None:
-    #         inp = (sudo + "\n").encode('utf-8')
-    #     else:
-    #         inp = (sudo + "\n")
-    #     r = await asyncio.wait_for(conn.run(cmd, **kwargs, input=inp, check=False), timeout=timeout)
-    # else:
-    #     r = await asyncio.wait_for(conn.run(cmd, **kwargs, check=False), timeout=timeout)
     r = await run_cmd(conn=conn, cmd=cmd, sudo=sudo, check=False, timeout=timeout, **kwargs)
     if r.returncode != 0:
         lgg.error("Error executing remote command '{}': RETURN CODE={}; STDERR={}".format(
@@ -442,23 +431,6 @@ async def fetch_mongo_rs_status(conn, mongo_uri, sudo=None, timeout: Optional[in
     lgg.debug("Fetching Mongo rs status")
     cmd = ['mongo', mongo_uri, '--quiet', '--eval', '"rs.status()"']
     return await _run_mongo_command(lgg, conn, cmd, sudo, timeout)
-    # r = await run_cmd_logged(lgg,
-    #                          conn,
-    #                          cmd,
-    #                          sudo=sudo_pwd,
-    #                          encoding=None,
-    #                          timeout=timeout)
-    # if r.returncode != 0:
-    #     return None
-    # ss = [s for s in r.stdout.decode('utf-8').strip().replace("\t", '  ').split("\n")]
-    # i = -1
-    # for i in range(len(ss)):
-    #     if ss[i].startswith('{'):
-    #         break
-    # if i > -1:
-    #     ss = ss[i:]
-    # s = "\n".join(ss)
-    # return parse_mongo_json(s)
 
 
 async def fetch_mongo_rs_conf(conn, mongo_uri, sudo=None, timeout: Optional[int] = CMD_TIMEOUT) -> Dict:
@@ -475,23 +447,6 @@ async def fetch_mongo_rs_conf(conn, mongo_uri, sudo=None, timeout: Optional[int]
     lgg.debug("Fetching Mongo rs conf")
     cmd = ['mongo', mongo_uri, '--quiet', '--eval', '"rs.conf()"']
     return await _run_mongo_command(lgg, conn, cmd, sudo, timeout)
-    # r = await run_cmd_logged(lgg,
-    #                          conn,
-    #                          cmd,
-    #                          sudo=sudo,
-    #                          encoding=None,
-    #                          timeout=timeout)
-    # if r.returncode != 0:
-    #     return None
-    # ss = [s for s in r.stdout.decode('utf-8').strip().replace("\t", '  ').split("\n")]
-    # i = -1
-    # for i in range(len(ss)):
-    #     if ss[i].startswith('{'):
-    #         break
-    # if i > -1:
-    #     ss = ss[i:]
-    # s = "\n".join(ss)
-    # return parse_mongo_json(s)
 
 
 async def fetch_hostname(conn, sudo=None, timeout: Optional[int] = CMD_TIMEOUT) -> str:
@@ -500,8 +455,3 @@ async def fetch_hostname(conn, sudo=None, timeout: Optional[int] = CMD_TIMEOUT) 
     cmd = ['hostname']
     r = await run_cmd_logged(lgg, conn, cmd, sudo, timeout)
     return r.stdout.strip()
-
-
-# ##############################################################################################################
-# #####  TODO Move below methods to Frogspace9, they are BARCO specific
-# ##############################################################################################################
