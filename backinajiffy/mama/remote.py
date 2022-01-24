@@ -1,3 +1,19 @@
+"""
+Rationale to connect to remotes
+-------------------------------
+
+A remote is defined as a host to which you want to connect ('end_host') and optionally a list of jump hosts. Each host
+shall be given as an ssh-URL, e.g. "ssh://user:passwd@host".
+
+When you connect to an end_host, you will get a list of open connections. The last one in the list is the connection
+to the end_host, the preceding ones are connections to the jump hosts. If you do not specify jump hosts, of course,
+this list has only one open connection.
+
+To execute a command, always use the last connection in this list.
+
+Remember to close all connections, in reverse order.
+"""
+
 import argparse
 import asyncio
 import json
@@ -154,8 +170,7 @@ def build_remote_arguments(remotes: List[str], sudo=False, jump_hosts: Optional[
             else:
                 raise MamaError('1st remote must be complete URL')
         r.update(general_args)
-        if r['sudo']:
-            r['sudo_pwd'] = r['end_host']['password']
+        r['sudo_pwd'] = r['end_host'].get('password')
         rr.append(r)
     return rr
 
@@ -200,6 +215,17 @@ async def connect(remote: Mapping[str, Any]) -> Sequence[Any]:
         cc.append(conn)
         prev_conn = conn
     return cc
+
+
+def disconnect(lgg: logging.Logger, connections: Sequence[Any]):
+    """
+    Disconnects all connections to a remote, incl. those to jump hosts.
+    """
+    for c in reversed(connections):
+        try:
+            c.close()
+        except ConnectionError as e:
+            lgg.error('Failed to close connection', extra={'data': {'error': str(e), 'connection': c}})
 
 
 async def disk_free(conn, human: Optional[bool] = True, timeout: Optional[int] = CMD_TIMEOUT) -> Any:
@@ -258,14 +284,14 @@ async def run_bash_script(conn, fn_script: str, sudo=None, timeout: Optional[int
         return await asyncio.wait_for(conn.run(cmd, stdin=fn_script, check=True), timeout=timeout)
 
 
-async def run_cmd(conn, cmd: str or List[str], sudo=None, check=True, timeout: Optional[int] = CMD_TIMEOUT,
+async def run_cmd(conn, cmd: str or List[str], sudo_pwd=None, check=True, timeout: Optional[int] = CMD_TIMEOUT,
                   **kwargs) -> asyncssh.SSHCompletedProcess:
     """
     Helper to run a command on a remote host.
 
     :param conn: Open connection
     :param cmd: The command
-    :param sudo: Whether to run command with sudo
+    :param sudo_pwd: If given, run command with sudo
     :param check: Whether or not to raise ProcessError when a non-zero exit status is returned. Passed through to
      :meth:`asyncssh.SSHClientConnection.run`
     :param timeout: Timeout for this command
@@ -274,18 +300,18 @@ async def run_cmd(conn, cmd: str or List[str], sudo=None, check=True, timeout: O
     """
     if isinstance(cmd, list):
         cmd = ' '.join(cmd)
-    if isinstance(sudo, str):
+    if isinstance(sudo_pwd, str):
         cmd = _wrap_sudo(cmd)
         if 'encoding' in kwargs and kwargs['encoding'] is None:
-            inp = (sudo + "\n").encode('utf-8')
+            inp = (sudo_pwd + "\n").encode('utf-8')
         else:
-            inp = (sudo + "\n")
+            inp = (sudo_pwd + "\n")
         return await asyncio.wait_for(conn.run(cmd, **kwargs, input=inp, check=check), timeout=timeout)
     else:
         return await asyncio.wait_for(conn.run(cmd, **kwargs, check=check), timeout=timeout)
 
 
-async def run_cmd_logged(lgg: Logger, conn, cmd: str or List[str], sudo=None,
+async def run_cmd_logged(lgg: Logger, conn, cmd: str or List[str], sudo_pwd=None,
                          timeout: Optional[int] = CMD_TIMEOUT, **kwargs) -> asyncssh.SSHCompletedProcess:
     """
     Helper to run a command on a remote host and log occurred error.
@@ -295,19 +321,19 @@ async def run_cmd_logged(lgg: Logger, conn, cmd: str or List[str], sudo=None,
     :param lgg: Instance of a logger
     :param conn: Open connection
     :param cmd: The command
-    :param sudo: Whether to run command with sudo
+    :param sudo_pwd: If given, run command with sudo
     :param timeout: Timeout for this command
     :param kwargs: Passed through to :meth:`asyncssh.SSHClientConnection.run`
     :return: :class:`asyncssh.SSHCompletedProcess`
     """
-    r = await run_cmd(conn=conn, cmd=cmd, sudo=sudo, check=False, timeout=timeout, **kwargs)
+    r = await run_cmd(conn=conn, cmd=cmd, sudo_pwd=sudo_pwd, check=False, timeout=timeout, **kwargs)
     if r.returncode != 0:
         lgg.error("Error executing remote command '{}': RETURN CODE={}; STDERR={}".format(
             cmd, r.returncode, r.stderr))
     return r
 
 
-async def cat_file(lgg: Logger, conn, fn: str, sudo=None, timeout: Optional[int] = CMD_TIMEOUT) \
+async def cat_file(lgg: Logger, conn, fn: str, sudo_pwd=None, timeout: Optional[int] = CMD_TIMEOUT) \
         -> Optional[List[str]]:
     """
     Cats a file on remote host.
@@ -315,17 +341,16 @@ async def cat_file(lgg: Logger, conn, fn: str, sudo=None, timeout: Optional[int]
     :param lgg: Instance of a logger
     :param conn: Open connection
     :param fn: Name of the file to cat
-    :param sudo: Whether to run command with sudo
+    :param sudo_pwd: If given, run command with sudo
     :param timeout: Timeout for this command
     :return: List of strings with file's contents, or None if an error occurred (e.g. file does not exist)
     """
     cmd = ['cat', fn]
-    r = await run_cmd(lgg,
-                      conn,
-                      cmd,
-                      sudo=sudo,
-                      encoding=None,
-                      timeout=timeout)
+    r = await run_cmd_logged(lgg=lgg,
+                             conn=conn,
+                             cmd=cmd,
+                             sudo_pwd=sudo_pwd,
+                             timeout=timeout)
     if r.returncode != 0:
         return None
     return r.stdout.strip().split("\n")
@@ -391,7 +416,7 @@ async def fetch_logs(lgg: Logger, conn, data_dir: str, sudo_pwd=None, timeout: O
             r = await run_cmd_logged(lgg,
                                      conn,
                                      cmd,
-                                     sudo=sudo_pwd,
+                                     sudo_pwd=sudo_pwd,
                                      stdout=fn,
                                      encoding=None,
                                      timeout=timeout)
@@ -423,7 +448,7 @@ async def fetch_crm_status(conn, sudo_pwd=None, timeout: Optional[int] = CMD_TIM
     r = await run_cmd_logged(lgg,
                              conn,
                              cmd,
-                             sudo=sudo_pwd,
+                             sudo_pwd=sudo_pwd,
                              encoding=None,
                              timeout=timeout)
     return r.stdout.decode('utf-8')
@@ -448,7 +473,7 @@ async def _run_mongo_command(lgg: Logger, conn, cmd: List[str], sudo: Optional[s
     r = await run_cmd_logged(lgg,
                              conn,
                              cmd,
-                             sudo=sudo,
+                             sudo_pwd=sudo,
                              encoding=None,
                              timeout=timeout)
     if r.returncode != 0:
