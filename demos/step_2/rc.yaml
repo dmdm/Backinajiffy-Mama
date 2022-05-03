@@ -1,0 +1,8 @@
+bar: this is bar from rc file
+bool: yes
+gibberish: some well-written stanzas
+
+a:
+  b:
+    c: [one, two]
+    x: [three, four]

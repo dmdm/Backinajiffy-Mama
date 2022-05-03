@@ -106,7 +106,7 @@ CONFIG_LOGGING = {
     'objects':                  {
         'queue': {
             'class':   'multiprocessing.Queue',
-            'maxsize': 1_000
+            'maxsize': -1
         }
     },
     'disable_existing_loggers': False,
@@ -137,7 +137,7 @@ CONFIG_LOGGING = {
         }
     },
     'root':                     {
-        'handlers': ['queue_listener'],
+        'handlers': ['console'],
     },
     'loggers':                  {
         'paramiko':     {
@@ -176,6 +176,7 @@ def init_logging(log_file: Optional[str] = None, config_dict=None):
     if log_file:
         conf['handlers']['file']['filename'] = log_file
         conf['handlers']['queue_listener']['handlers'].append('cfg://handlers.file')
+        conf['root']['handlers'].append('file')
     logging.config.dictConfig(conf)
 
 

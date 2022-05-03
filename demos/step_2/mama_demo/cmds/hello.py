@@ -11,6 +11,7 @@ CMD = __name__.split('.')[-1].replace('_', '-')
 def add_subcommand(sps: argparse._SubParsersAction):
     p = sps.add_parser(CMD, help='The first command')
     # Tell the argument parser about the class that implements the command.
+    p.add_argument('--foo', help='Some foo argument')
     p.set_defaults(cmd=HelloCmd)
 
 
