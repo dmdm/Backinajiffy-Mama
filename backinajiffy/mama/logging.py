@@ -106,7 +106,7 @@ CONFIG_LOGGING = {
     'objects':                  {
         'queue': {
             'class':   'multiprocessing.Queue',
-            'maxsize': 1_000
+            'maxsize': -1
         }
     },
     'disable_existing_loggers': False,
@@ -137,7 +137,7 @@ CONFIG_LOGGING = {
         }
     },
     'root':                     {
-        'handlers': ['queue_listener'],
+        'handlers': ['console'],
     },
     'loggers':                  {
         'paramiko':     {
