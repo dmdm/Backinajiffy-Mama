@@ -31,3 +31,4 @@ setup(
     ],
     install_requires=read_file('requirements.txt')
 )
+

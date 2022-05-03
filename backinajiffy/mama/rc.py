@@ -81,8 +81,10 @@ class Rc:
         kk = [k for k in conf.keys() if k.startswith(path)]
         return {k[len(path + '.'):]: conf[k] for k in kk}
 
-    def add_args(self, args: argparse.Namespace):
-        self.__class__._conf = self.__class__._conf.new_child(vars(args))
+    def add_args(self, args: argparse.Namespace, new_child=True):
+        self.__class__._conf = self.__class__._conf.new_child({k:v for k,v in vars(args).items() if v is not None})
+        if new_child:
+            self.__class__._conf = self.__class__._conf.new_child({})
 
 
     @property
