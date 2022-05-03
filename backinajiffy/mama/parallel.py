@@ -28,6 +28,7 @@ async def spawn_processes(inputs, task_func, processes=multiprocessing.cpu_count
         for process_num in range(processes)
     ]
     completed, pending = await asyncio.wait(blocking_tasks)
+    # TODO handle pending, i.e. those that timed-out
     results = [t.result() for t in completed]
     return results
 
