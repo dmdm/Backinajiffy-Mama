@@ -18,6 +18,8 @@ class Rc:
     _dir_user_config = Path.home() / '.config'
     _conf = ChainMap()
 
+    defaults = {}
+
     @classmethod
     def create(cls, project_name: str, defaults: Optional[Dict] = None, fn_rc: Optional[Path] = None) -> 'Rc':
 
@@ -49,7 +51,7 @@ class Rc:
                     return yaml.load(fp, Loader=YamlLoader)
 
         if defaults is None:
-            defaults = {}
+            defaults = cls.defaults
         cls._instance = Rc()
         cls._conf = ChainMap(*reversed([defaults] + _read_regular_files()))
         secrets = _read_secrets_file()
