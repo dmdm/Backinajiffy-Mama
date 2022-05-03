@@ -443,7 +443,7 @@ async def default_main(project_name: str,
     if debug_args:
         lgg.debug(args)
     if init_func:
-        await init_func(args)
+        await init_func(args=args)
 
     start_time = time.time()
     lgg.info(f'Start {project_name}')
