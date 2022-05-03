@@ -176,6 +176,7 @@ def init_logging(log_file: Optional[str] = None, config_dict=None):
     if log_file:
         conf['handlers']['file']['filename'] = log_file
         conf['handlers']['queue_listener']['handlers'].append('cfg://handlers.file')
+        conf['root']['handlers'].append('file')
     logging.config.dictConfig(conf)
 
 
