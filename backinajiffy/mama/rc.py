@@ -1,5 +1,5 @@
 import argparse
-from collections import ChainMap
+from .collections import ChainMap
 from pathlib import Path
 from typing import Optional, Any, Union, List, Dict
 
@@ -37,7 +37,7 @@ class Rc:
             for fn in ff:
                 if fn.exists():
                     with open(fn, 'rt', encoding='utf-8') as fp:
-                        dd.append(flatten(yaml.load(fp, Loader=YamlLoader)))
+                        dd.append(yaml.load(fp, Loader=YamlLoader))
             dd.reverse()
             return dd
 
@@ -56,7 +56,7 @@ class Rc:
         cls._conf = ChainMap(*reversed([defaults] + _read_regular_files()))
         secrets = _read_secrets_file()
         if secrets:
-            cls._conf = cls._conf.new_child(flatten(secrets))
+            cls._conf = cls._conf.new_child(secrets)
         return cls._instance
 
     @classmethod
@@ -70,39 +70,17 @@ class Rc:
 
     def g(self, path: Union[str, List], default: Optional[Any] = None):
         return self.__class__._conf.get(path, default)
-        # return pydash.get(self.__class__._conf, path, default)
 
     def s(self, path, value):
         # noinspection PyTypeChecker
         # --> allow ChainMap to be used like Dict
         self.__class__._conf[path] = value
-        # pydash.set_(self.__class__._conf, path, value)
-
-    def gg(self, path: Union[str, List], default: Optional[Any] = None):
-        conf = self.__class__._conf
-        kk = [k for k in conf.keys() if k.startswith(path)]
-        return {k[len(path + '.'):]: conf[k] for k in kk}
 
     def add_args(self, args: argparse.Namespace, new_child=True):
         self.__class__._conf = self.__class__._conf.new_child({k:v for k,v in vars(args).items() if v is not None})
         if new_child:
             self.__class__._conf = self.__class__._conf.new_child({})
 
-
     @property
     def conf(self):
         return self.__class__._conf
-
-
-def flatten(d: Dict, sep='.') -> Dict:
-    def _f(d: Dict, z: Dict, p: str):
-        for k, v in d.items():
-            np = p + sep + k if p else k
-            if isinstance(v, dict):
-                _f(v, z, np)
-            else:
-                z[np] = v
-
-    z = {}
-    _f(d, z, '')
-    return z

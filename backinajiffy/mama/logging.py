@@ -1,7 +1,11 @@
-import json
+import io
+
+import orjson as json
 import logging
 import logging.config
 import logging.handlers
+import platform
+import time
 from copy import deepcopy
 from typing import Optional, List
 
@@ -87,6 +91,17 @@ class MamaFormatter(logging.Formatter):
         result = super().formatException(exc_info)
         return repr(result)  # or format into one line however you want to
 
+    def formatTime(self, record, datefmt=None):
+        ct = self.converter(record.created)
+        if datefmt:
+            # support %f in datefmt (see https://gist.github.com/vernomcrp/18069053fb3cf3807c9e8601eb8016d5)
+            datefmt = datefmt.replace("%f", "{:03.0f}".format(record.msecs))
+            s = time.strftime(datefmt, ct)
+        else:
+            t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
+            s = "{},{:03.0f}".format(t, record.msecs)
+        return s
+
     def format(self, record):
         s = super().format(record)
         xtra = {
@@ -94,65 +109,80 @@ class MamaFormatter(logging.Formatter):
             'l': record.lineno
         }
         if hasattr(record, 'data'):
-            xtra['data'] = record.data
-        s += ' ' + json.dumps(xtra, default=str)
+            xtra['data'] = str(record.data) if isinstance(record.data, (bytes, io.BytesIO)) else record.data
+        s += ' ࿅ ' + json.dumps(xtra, default=str).decode()
         if record.exc_text:
             s = s.replace('\n', '')
         return s
 
 
+class MamaHostnameFilter(logging.Filter):
+    hostname = platform.node()
+
+    def filter(self, record):
+        record.hostname = MamaHostnameFilter.hostname
+        return True
+
+
 CONFIG_LOGGING = {
-    'version':                  1,
-    'objects':                  {
+    'version': 1,
+    'objects': {
         'queue': {
-            'class':   'multiprocessing.Queue',
+            'class': 'multiprocessing.Queue',
             'maxsize': -1
         }
     },
     'disable_existing_loggers': False,
-    'formatters':               {
-        'tz': {
-            '()':      'backinajiffy.mama.logging.MamaFormatter',
-            'format':  '%(asctime)s %(processName)s %(threadName)s %(name)-12s %(levelname)-8s %(message)s',
-            'datefmt': '%Y-%m-%dT%H:%M:%S%z'
+    'formatters': {
+        'MamaFormatter': {
+            '()': 'backinajiffy.mama.logging.MamaFormatter',
+            'format': '%(asctime)s %(hostname)s %(processName)s %(threadName)s %(name)-12s %(levelname)-8s %(message)s',
+            'datefmt': '%Y-%m-%dT%H:%M:%S,%f%z'
         },
     },
-    'handlers':                 {
-        'console':        {
-            'class':     'logging.StreamHandler',
-            'stream':    'ext://sys.stderr',
-            'formatter': 'tz',
+    'filters': {
+        'MamaHostnameFilter': {
+            '()': 'backinajiffy.mama.logging.MamaHostnameFilter',
+        }
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stderr',
+            'formatter': 'MamaFormatter',
+            'filters': ['MamaHostnameFilter'],
         },
-        'file':           {
-            'class':     'logging.FileHandler',
-            'formatter': 'tz',
-            'filename':  '/tmp/mama.log'  # Override this in init_logging()
+        'file': {
+            'class': 'logging.FileHandler',
+            'formatter': 'MamaFormatter',
+            'filename': '/tmp/mama.log',  # Override this in init_logging()
+            'filters': ['MamaHostnameFilter'],
         },
         'queue_listener': {
-            'class':    'backinajiffy.mama.logging.QueueListenerHandler',
+            'class': 'backinajiffy.mama.logging.QueueListenerHandler',
             # append a file handler in init_logging() when args.log-file is given
             'handlers': ['cfg://handlers.console'],
-            'queue':    'cfg://objects.queue',
+            'queue': 'cfg://objects.queue',
             'auto_run': True
         }
     },
-    'root':                     {
+    'root': {
         'handlers': ['console'],
     },
-    'loggers':                  {
-        'paramiko':     {
+    'loggers': {
+        'paramiko': {
             'level': 'INFO'
         },
-        'asyncio':      {
+        'asyncio': {
             'level': 'INFO'
         },
-        'aiohttp':      {
+        'aiohttp': {
             'level': 'INFO'
         },
-        'asyncssh':     {
+        'asyncssh': {
             'level': 'WARNING'
         },
-        'mama':         {
+        'mama': {
             'level': 'INFO'
         },
         'backinajiffy': {

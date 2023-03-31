@@ -49,8 +49,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'furo'
-pygments_style = "dm-gruvbox-light"
-pygments_dark_style = "dm-gruvbox-dark"
+pygments_style = "gruvbox-light"
+pygments_dark_style = "gruvbox-dark"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

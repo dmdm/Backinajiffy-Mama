@@ -15,12 +15,7 @@ import os
 import pkgutil
 
 from tabulate import tabulate
-
-try:
-    import ujson as json
-except ImportError:
-    import json
-import json as json_builtin
+import orjson as json
 
 try:
     from yaml import CDumper as YamlDumper
@@ -89,11 +84,7 @@ class BaseCmd:
         :param data: The result data
         """
         if self.output_format == 'json':
-            try:
-                data = json.dumps(data)
-            except TypeError:
-                data = json_builtin.dumps(data, default=str)
-
+            data = json.dumps(data, default=str).decode()
         elif self.output_format == 'yaml':
             data = yaml.dump(data, Dumper=YamlDumper)
         elif self.output_format == 'ptxt':
@@ -253,6 +244,13 @@ def add_argument(p: ArgumentParser,
             required=required,
             action='count'
         )
+    elif arg == 'version':
+        p.add_argument(
+            '-V', '--version',
+            help='Print version.' + (more_help if more_help else ''),
+            required=required,
+            action='store_true'
+        )
     elif arg == 'log-file':
         p.add_argument(
             '--log-file',
@@ -309,6 +307,7 @@ def add_default_arguments(p: ArgumentParser):
     add_argument(p, 'output-format', required=False)
     add_argument(p, 'output-file', required=False)
     add_argument(p, 'conf', required=False)
+    add_argument(p, 'version', required=False)
 
 
 def import_subcommands(p: ArgumentParser, module_with_commands):
@@ -386,7 +385,7 @@ def set_log_level(args, libs: Optional[List[str]] = None) -> int:
     if args.quiet:
         v = -1
     elif args.verbose is None:
-        v = 0
+        return 0
     else:
         v = args.verbose
     logging.root.setLevel(lvls[v if v <= 3 else 3])
@@ -420,7 +419,8 @@ async def default_main(project_name: str,
                        argv: Optional[List[Any]] = None,
                        debug_args=False,
                        log_libs: Optional[List[str]] = None,
-                       init_func: Optional[Any] = None
+                       init_func: Optional[Any] = None,
+                       project_version: Optional[str] = None
                        ):
     """
     Default implementation of a 'main' function.
@@ -437,17 +437,25 @@ async def default_main(project_name: str,
     if argv is None:
         argv = sys.argv
     args = argparser.parse_args(argv[1:])
-    init_logging(args.log_file)
+    rc = Rc.create(project_name=project_name, fn_rc=args.conf if args.conf else None)
+    rc.add_args(args)
+    lc = rc.g('logging')
+    init_logging(log_file=args.log_file, config_dict=lc)
     set_log_level(args, libs=log_libs)
     lgg = logging.getLogger(project_logger_name)
     if debug_args:
         lgg.debug(args)
+    if args.version:
+        if project_version:
+            print(f'{project_name} {project_version}')
+        else:
+            print('No version specified.')
+        sys.exit(EXIT_CODE_OK)
     if init_func:
         await init_func(args=args)
 
     start_time = time.time()
     lgg.info(f'Start {project_name}')
-    Rc.create(project_name=project_name, fn_rc=args.conf if args.conf else None).add_args(args)
 
     exit_code = await run_subcommand(lgg, args)
     taken = time.time() - start_time
