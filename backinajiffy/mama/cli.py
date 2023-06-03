@@ -212,9 +212,9 @@ def get_help_formatter(prog):
 
 def add_argument(p: ArgumentParser,
                  arg: str,
-                 required: Optional[bool] = False,
-                 more_help: Optional[str] = None,
-                 more_choices: Optional[List[str]] = None,
+                 required=False,
+                 more_help: str | None = None,
+                 more_choices: list[str] | None = None,
                  default_value=None):
     """
     Helper to add often-used arguments to given argument parser.
@@ -421,7 +421,8 @@ async def default_main(project_name: str,
                        log_libs: List[str] | None = None,
                        init_func: Callable[[], Awaitable] | None = None,
                        project_version: str | None = None,
-                       rc_class: Any = Rc
+                       rc_class: Any = Rc,
+                       defaults: dict | None = None
                        ):
     """
     Default implementation of a 'main' function.
@@ -439,7 +440,7 @@ async def default_main(project_name: str,
         argv = sys.argv
     args = argparser.parse_args(argv[1:])
     rc = rc_class()
-    await rc.load(project_name=project_name, fn_rc=args.conf if args.conf else None)
+    await rc.load(project_name=project_name, defaults=defaults, fn_rc=args.conf if args.conf else None)
     rc.add_args(args)
     lc = rc.g('logging')
     init_logging(log_file=args.log_file, config_dict=lc)

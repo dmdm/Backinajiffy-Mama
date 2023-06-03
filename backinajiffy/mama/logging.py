@@ -130,6 +130,7 @@ class MamaFormatter(logging.Formatter):
             if not hasattr(record, 'data'):
                 setattr(record, 'data', {})
             record.data['exception'] = self._e_info
+            self._e_info = None
         xtra = {
             'f': record.pathname,
             'l': record.lineno
