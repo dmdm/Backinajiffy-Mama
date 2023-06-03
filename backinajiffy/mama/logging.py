@@ -1,4 +1,6 @@
 import io
+import re
+import traceback
 
 import orjson as json
 import logging
@@ -68,6 +70,16 @@ class QueueListenerHandler(QueueHandler):
         return super().emit(record)
 
 
+RE_DSN_CREDENTIALS = re.compile(r'^(?P<head>.+?://)(?P<user>[^:]*)(?P<pwd>[^@]*)(?P<tail>@.*)$')
+
+
+def clean_dsn(dsn: str) -> str:
+    m = RE_DSN_CREDENTIALS.match(dsn)
+    if not m:
+        return dsn
+    return '{head}{user}:***{tail}'.format(**m.groupdict())
+
+
 class MamaFormatter(logging.Formatter):
     """
     Custom log formatter
@@ -84,12 +96,22 @@ class MamaFormatter(logging.Formatter):
             lgg.info('My message', extra={'data': {'x': 5, 'marker': 'list-sources'}}
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._e_info = None
+
     def formatException(self, exc_info):
         """
         Format an exception so that it prints on a single line.
         """
-        result = super().formatException(exc_info)
-        return repr(result)  # or format into one line however you want to
+        etype, e, tb = exc_info
+        stack_summary = traceback.extract_tb(tb)
+        self._e_info = {
+            'type': etype,
+            'e': e,
+            'stack': stack_summary.format()
+        }
+        return None
 
     def formatTime(self, record, datefmt=None):
         ct = self.converter(record.created)
@@ -104,15 +126,25 @@ class MamaFormatter(logging.Formatter):
 
     def format(self, record):
         s = super().format(record)
+        if self._e_info:
+            if not hasattr(record, 'data'):
+                setattr(record, 'data', {})
+            record.data['exception'] = self._e_info
         xtra = {
             'f': record.pathname,
             'l': record.lineno
         }
         if hasattr(record, 'data'):
-            xtra['data'] = str(record.data) if isinstance(record.data, (bytes, io.BytesIO)) else record.data
+            data = record.data
+            if isinstance(data, dict):
+                if 'dsn' in data:
+                    data['dsn'] = clean_dsn(data['dsn'])
+                xtra['data'] = data
+            elif isinstance(data, (bytes, io.BytesIO)):
+                xtra['data'] = str(data)
+            else:
+                xtra['data'] = data
         s += ' ࿅ ' + json.dumps(xtra, default=str).decode()
-        if record.exc_text:
-            s = s.replace('\n', '')
         return s
 
 
@@ -170,9 +202,6 @@ CONFIG_LOGGING = {
         'handlers': ['console'],
     },
     'loggers': {
-        'paramiko': {
-            'level': 'INFO'
-        },
         'asyncio': {
             'level': 'INFO'
         },
@@ -193,12 +222,12 @@ CONFIG_LOGGING = {
 """Default logging configuration."""
 
 
-def init_logging(log_file: Optional[str] = None, config_dict=None):
+def init_logging(log_file: str | None = None, config_dict=None):
     """
     Initializes Python's logging infrastructure.
 
     :param log_file:
-    :param config_dict: Dict with the logging configuration. By default :const:`CONFIG_LOGGING`.
+    :param config_dict: Dict with the logging configuration. By default, :const:`CONFIG_LOGGING`.
     """
     if not config_dict:
         config_dict = CONFIG_LOGGING
@@ -210,7 +239,7 @@ def init_logging(log_file: Optional[str] = None, config_dict=None):
     logging.config.dictConfig(conf)
 
 
-def get_error_msg_chain(exc: BaseException, msgs: Optional[List[str]] = None, sep=' ⇠ ') -> str:
+def get_error_msg_chain(exc: BaseException, msgs: List[str] | None = None, sep=' ⇠ ') -> str:
     """
     Formats a chain of exceptions as a single-line string.
 

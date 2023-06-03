@@ -8,7 +8,7 @@ from pathlib import Path
 from pprint import pformat
 from importlib import import_module
 from argparse import ArgumentParser
-from typing import Optional, List, Any, Tuple
+from typing import Optional, List, Any, Tuple, Callable, Awaitable
 import logging
 import logging.config
 import os
@@ -43,10 +43,10 @@ class BaseCmd:
 
     def __init__(self,
                  args: argparse.Namespace,
-                 cmd_name: Optional[str] = None,
-                 lgg: Optional[logging.Logger] = None,
-                 catch: Optional[Tuple] = (MamaError,),
-                 exit_code_error: Optional[int] = 1,
+                 cmd_name: str | None = None,
+                 lgg: logging.Logger | None = None,
+                 catch: Tuple | None = (MamaError,),
+                 exit_code_error: int = 1,
                  finally_cb=None):
         """
         Base class for a class that implements a particular command.
@@ -416,11 +416,12 @@ async def output(data: Any, fn: Optional[str] = None):
 async def default_main(project_name: str,
                        project_logger_name: str,
                        argparser: ArgumentParser,
-                       argv: Optional[List[Any]] = None,
+                       argv: List[Any] | None = None,
                        debug_args=False,
-                       log_libs: Optional[List[str]] = None,
-                       init_func: Optional[Any] = None,
-                       project_version: Optional[str] = None
+                       log_libs: List[str] | None = None,
+                       init_func: Callable[[], Awaitable] | None = None,
+                       project_version: str | None = None,
+                       rc_class: Any = Rc
                        ):
     """
     Default implementation of a 'main' function.
@@ -437,7 +438,8 @@ async def default_main(project_name: str,
     if argv is None:
         argv = sys.argv
     args = argparser.parse_args(argv[1:])
-    rc = Rc.create(project_name=project_name, fn_rc=args.conf if args.conf else None)
+    rc = rc_class()
+    await rc.load(project_name=project_name, fn_rc=args.conf if args.conf else None)
     rc.add_args(args)
     lc = rc.g('logging')
     init_logging(log_file=args.log_file, config_dict=lc)

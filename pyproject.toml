@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "backinajiffy-mama"
-version = "1.1.0"
+version = "1.1.0.00005"
 description = "Library to build CLI tools"
 authors = ["Dirk Makowski <dirk.makowski@gmail.com>"]
 license = "Other/Proprietary License"
@@ -10,11 +10,11 @@ packages = [{include = "backinajiffy/mama"}]
 [tool.poetry.dependencies]
 python = "^3.11"
 asyncssh = "^2.13.1"
-pydash = "^6.0.2"
+pydash = "^7.0.4"
 python-dateutil = "^2.8.2"
 PyYAML = "^6.0"
 tabulate = "^0.9.0"
-orjson = "^3.8.9"
+orjson = "^3.9.0"
 
 [tool.poetry.group.dev.dependencies]
 Sphinx = "^6.1.3"
