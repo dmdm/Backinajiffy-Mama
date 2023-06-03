@@ -107,7 +107,7 @@ class BaseCmd:
         """
         try:
             length = len(data)
-        except TypeError: # "object of type 'xxx' has no len()
+        except TypeError:  # "object of type 'xxx' has no len()
             return data
         if length > 0 and isinstance(data, collections.abc.Sequence) and not isinstance(data, str):
             if isinstance(data[0], collections.abc.Mapping):
@@ -148,7 +148,7 @@ class BaseCmd:
             data = await self.get_result()
             if data is None:
                 if self.output_file and self.output_written:
-                    self.lgg.info(f"Output written to file '{self.output_file}'")
+                    self.lgg.info(f"Output written to file", extra=dict(data=dict(output_file=self.output_file)))
                 if not self.output_written:
                     self.lgg.info('No data')
             else:
@@ -159,13 +159,15 @@ class BaseCmd:
 
         # Handle my errors here, others bubble up to main
         except self.catch as exc:
-            self.lgg.error("Error executing command '{}': {}".format(self.cmd_name, get_error_msg_chain(exc)),
+            self.lgg.error("Error executing command", extra=dict(data=dict(
+                cmd=self.cmd_name,
+                errors=get_error_msg_chain(exc))),
                            exc_info=True)
             # We can return a non-zero exit-code ourselves
             return self.exit_code_error
         finally:
             # Perform my cleanups here
-            self.lgg.debug(f"Cleaning up command '{self.cmd_name}'")
+            self.lgg.debug(f"Cleaning up command", extra=dict(data=dict(cmd=self.cmd_name)))
             if self.finally_cb:
                 await self.finally_cb()
 
@@ -346,7 +348,7 @@ async def run_subcommand(lgg: logging.Logger, args: argparse.Namespace) -> int:
             lgg.fatal('Please call a sub-command')
             return EXIT_CODE_FATAL
         else:
-            lgg.debug(f"Running subcommand '{args.cmd}'")
+            lgg.debug(f"Running subcommand", extra=dict(data=dict(cmd=args.cmd)))
             cmd = args.cmd(args, lgg=lgg)
             return await cmd.run()
     except Exception as exc:
@@ -378,10 +380,10 @@ def set_log_level(args, libs: Optional[List[str]] = None) -> int:
     """
     lvls = {
         -1: logging.CRITICAL,
-        0:  logging.ERROR,
-        1:  logging.WARNING,
-        2:  logging.INFO,
-        3:  logging.DEBUG
+        0: logging.ERROR,
+        1: logging.WARNING,
+        2: logging.INFO,
+        3: logging.DEBUG
     }
     if libs is None:
         libs = []
