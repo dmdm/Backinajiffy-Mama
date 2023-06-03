@@ -105,7 +105,11 @@ class BaseCmd:
         :param data: Raw result data
         :return: The formatted data as string
         """
-        if len(data) > 0 and isinstance(data, collections.abc.Sequence) and not isinstance(data, str):
+        try:
+            length = len(data)
+        except TypeError: # "object of type 'xxx' has no len()
+            return data
+        if length > 0 and isinstance(data, collections.abc.Sequence) and not isinstance(data, str):
             if isinstance(data[0], collections.abc.Mapping):
                 headers = 'keys'
             else:
