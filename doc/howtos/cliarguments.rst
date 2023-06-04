@@ -52,7 +52,7 @@ Provide arguments for your command by implementing the following function in the
 
     class MyCmd(cli.BaseCmd):
         def __init__(self, args):
-            super().__init__(args=args, cmd_name=CMD, finally_cb=self.close,
+            super().__init__(args=args, finally_cb=self.close,
                              catch=(asyncio.TimeoutError, asyncssh.process.ProcessError),
                              lgg=logging.getLogger(PROJECT_LOGGER_NAME + '.' + self.__class__.__name__))
             self.processes = args.processes

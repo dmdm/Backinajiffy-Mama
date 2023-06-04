@@ -24,6 +24,7 @@ Here is a quick list of the main features.
 
 Get to know Mama by following the :ref:`tutorial` and then read the :ref:`howtos`.
 
+.. todo:: Remove arg `cmd_name` everywhere
 
 .. toctree::
    :maxdepth: 2

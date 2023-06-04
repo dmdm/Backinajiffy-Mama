@@ -43,7 +43,6 @@ class BaseCmd:
 
     def __init__(self,
                  args: argparse.Namespace,
-                 cmd_name: str | None = None,
                  lgg: logging.Logger | None = None,
                  catch: Tuple | None = (MamaError,),
                  exit_code_error: int = 1,
@@ -54,7 +53,6 @@ class BaseCmd:
         TODO Implement reading of config file (arg '--conf')
 
         :param args: The command-line arguments as returned from Argparser
-        :param cmd_name: Name of this command
         :param lgg: Instance of a logger
         :param catch: Tuple of error classes that shall be caught
         :param exit_code_error: Exit code when script terminates with error
@@ -66,7 +64,6 @@ class BaseCmd:
         self.output_format = args.output_format
         self.output_file = Path(args.output_file) if args.output_file else None
         self.lgg = lgg if lgg else logging.getLogger(PROJECT_LOGGER_NAME + '.' + self.__class__.__name__)
-        self.cmd_name = cmd_name
         self.catch = catch
         self.exit_code_error = exit_code_error
         self.finally_cb = finally_cb
@@ -160,14 +157,14 @@ class BaseCmd:
         # Handle my errors here, others bubble up to main
         except self.catch as exc:
             self.lgg.error("Error executing command", extra=dict(data=dict(
-                cmd=self.cmd_name,
+                cmd=self,
                 errors=get_error_msg_chain(exc))),
                            exc_info=True)
             # We can return a non-zero exit-code ourselves
             return self.exit_code_error
         finally:
             # Perform my cleanups here
-            self.lgg.debug(f"Cleaning up command", extra=dict(data=dict(cmd=self.cmd_name)))
+            self.lgg.debug(f"Cleaning up command", extra=dict(data=dict(cmd=self)))
             if self.finally_cb:
                 await self.finally_cb()
 

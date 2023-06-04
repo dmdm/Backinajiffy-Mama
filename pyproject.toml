@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "backinajiffy-mama"
-version = "1.1.0.00010"
+version = "1.1.0.00011"
 description = "Library to build CLI tools"
 authors = ["Dirk Makowski <dirk.makowski@gmail.com>"]
 license = "Other/Proprietary License"
