@@ -62,7 +62,8 @@ class Stopwatch(Singleton):
 
     @property
     def taken(self):
-        return {k: v['total'] for k, v in self.__class__._times.items()}
+        # 'total' might not yet exist if app crashed
+        return {k: v.get('total') for k, v in self.__class__._times.items()}
 
     @property
     def times(self):
