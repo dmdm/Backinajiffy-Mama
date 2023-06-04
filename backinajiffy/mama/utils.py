@@ -2,31 +2,6 @@ import asyncio
 import time
 
 
-class Stopwatch:
-    _instance: 'Stopwatch'
-
-    def __init__(self):
-        self._times = {}
-
-    def start(self, name: str):
-        self._times[name] = {
-            'start': time.time()
-        }
-
-    def stop(self, name: str):
-        self._times[name]['stop'] = time.time()
-        self._times[name]['total'] = self._times[name]['stop'] - self._times[name]['start']
-
-    @classmethod
-    def instance(cls):
-        if not cls._instance:
-            cls._instance = Stopwatch()
-        return cls._instance
-
-    @property
-    def times(self):
-        return {k: v['total'] for k, v in self._times}
-
 
 class Delay:
     DELAYS = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144]
@@ -65,3 +40,26 @@ class Singleton(object):
 
     def init(self, *args, **kwargs):
         pass
+
+
+class Stopwatch(Singleton):
+
+    _times = {}
+
+    def start(self, name: str):
+        self.__class__._times[name] = {
+            'start': time.time()
+        }
+
+    def stop(self, name: str):
+        self.__class__._times[name]['stop'] = time.time()
+        self.__class__._times[name]['total'] = \
+            self.__class__._times[name]['stop'] - self.__class__._times[name]['start']
+
+    @property
+    def taken(self):
+        return {k: v['total'] for k, v in self.__class__._times.items()}
+
+    @property
+    def times(self):
+        return self.__class__._times

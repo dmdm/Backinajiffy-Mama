@@ -17,6 +17,8 @@ import pkgutil
 from tabulate import tabulate
 import orjson as json
 
+from .utils import Stopwatch
+
 try:
     from yaml import CDumper as YamlDumper
 except ImportError:
@@ -32,7 +34,9 @@ from .logging import get_error_msg_chain, init_logging
 EXIT_CODE_OK = 0
 """Default exit code when script terminates normally."""
 EXIT_CODE_FATAL = 99
-"""Default exit code when script terminates with a fatal error."""
+"""Default exit code when script terminates with a fatal error (i.e. unhandled error)."""
+EXIT_CODE_ERROR = 1
+"""Default exit code when script terminates with an error (i.e. handled error)."""
 
 
 def module_logger() -> logging.Logger:
@@ -45,7 +49,7 @@ class BaseCmd:
                  args: argparse.Namespace,
                  lgg: logging.Logger | None = None,
                  catch: Tuple | None = (MamaError,),
-                 exit_code_error: int = 1,
+                 exit_code_error = EXIT_CODE_ERROR,
                  finally_cb=None):
         """
         Base class for a class that implements a particular command.
@@ -460,12 +464,13 @@ async def default_main(project_name: str,
     if init_func:
         await init_func(args=args)
 
-    start_time = time.time()
+    sw = Stopwatch()
+    sw.start(project_name)
     lgg.info(f'Start {project_name}')
 
     exit_code = await run_subcommand(lgg, args)
-    taken = time.time() - start_time
-    lgg.info(f'End {project_name}, {taken:.4f} secs taken')
+    sw.stop(project_name)
+    lgg.info(f'End {project_name}, {sw.taken[project_name]:.4f} secs taken')
     sys.exit(exit_code)
 
 
