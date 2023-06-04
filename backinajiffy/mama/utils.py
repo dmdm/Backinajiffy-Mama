@@ -47,11 +47,15 @@ class Stopwatch(Singleton):
     _times = {}
 
     def start(self, name: str):
+        if name in self.__class__._times:
+            raise KeyError(f"Stopwatch failed to start '{name}': already present")
         self.__class__._times[name] = {
             'start': time.time()
         }
 
     def stop(self, name: str):
+        if name not in self.__class__._times:
+            raise KeyError(f"Stopwatch failed to stop '{name}': unknown")
         self.__class__._times[name]['stop'] = time.time()
         self.__class__._times[name]['total'] = \
             self.__class__._times[name]['stop'] - self.__class__._times[name]['start']
