@@ -428,7 +428,8 @@ async def default_main(project_name: str,
                        log_libs: List[str] | None = None,
                        init_func: Callable[[], Awaitable] | None = None,
                        project_version: str | None = None,
-                       rc_class: Any = Rc,
+                       rc_class: type = Rc,
+                       stopwatch_class: type = Stopwatch,
                        defaults: dict | None = None
                        ):
     """
@@ -442,6 +443,12 @@ async def default_main(project_name: str,
     :param log_libs: Set log-level also for these libraries (these are by default always affected: 'urllib3', 'aiossh',
         'asyncio', 'aiohttp', 'mama', 'backinajiffy')
     :param init_func: Function to perform custom initialisation
+    :param project_version: Version of this project
+    :param rc_class: A class to instantiate the Rc; does not need to be a subclass of :class:`Rc` as long as it
+        provides the same interface
+    :param stopwatch_class: A class to instantiate the stopwatch; does not need to be a subclass of :class:`Stopwatch`
+        as long as it provides the same interface
+    :param defaults: Dict of default settings passed to Rc
     """
     if argv is None:
         argv = sys.argv
@@ -464,7 +471,7 @@ async def default_main(project_name: str,
     if init_func:
         await init_func(args=args)
 
-    sw = Stopwatch()
+    sw = stopwatch_class()
     sw.start(project_name)
     lgg.info(f'Start {project_name}')
 
